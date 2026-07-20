@@ -56,8 +56,12 @@ fi
 cp "$TOOL_DIR/include.list" "$CONFIG_DIR/include.list"
 cp "$TOOL_DIR/exclude.list" "$CONFIG_DIR/exclude.list"
 cp "$TOOL_DIR/build_manifest.py" "$SHARE_DIR/build_manifest.py"
+cp "$TOOL_DIR/build_server_snapshot.py" "$SHARE_DIR/build_server_snapshot.py"
 cp "$TOOL_DIR/tcr-sync" "$BIN_DIR/tcr-sync"
-chmod 700 "$SHARE_DIR/build_manifest.py" "$BIN_DIR/tcr-sync"
+chmod 700 \
+  "$SHARE_DIR/build_manifest.py" \
+  "$SHARE_DIR/build_server_snapshot.py" \
+  "$BIN_DIR/tcr-sync"
 
 cat > "$CONFIG_DIR/sync.env" <<EOF_CONFIG
 SOURCE_DIR="$SOURCE_DIR"
@@ -127,3 +131,4 @@ echo "Manual sync / 手动同步：$BIN_DIR/tcr-sync"
 echo "Log / 日志：$STATE_DIR/sync.log"
 echo "Whitelist / 白名单：$CONFIG_DIR/include.list"
 echo "Schedule / 定时：every six hours / 每六小时一次"
+echo "Snapshots / 目录快照：$MIRROR_DIR/generated"

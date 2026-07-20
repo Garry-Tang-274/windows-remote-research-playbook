@@ -96,6 +96,10 @@ while IFS= read -r entry || [[ -n "$entry" ]]; do
   fi
 done < "$INCLUDE_FILE"
 
+log "Generating safe server directory snapshot. / 正在生成安全的服务器目录快照。"
+python3 "${HOME}/.local/share/tcr-sync/build_server_snapshot.py" \
+  "$SOURCE_DIR" "$MIRROR_DIR/generated" "$STATE_DIR"
+
 max_bytes=$((MAX_FILE_MIB * 1024 * 1024))
 oversize_report="${STATE_DIR}/oversize_skipped.txt"
 : > "$oversize_report"
