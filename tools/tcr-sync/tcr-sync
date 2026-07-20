@@ -1,0 +1,141 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Synchronize whitelisted research artifacts to a private GitHub repository.
+# 将白名单内的科研产物同步到 GitHub 私有仓库。
+CONFIG_FILE="${TCR_SYNC_CONFIG:-${HOME}/.config/tcr-sync/sync.env}"
+INCLUDE_FILE="${TCR_SYNC_INCLUDE:-${HOME}/.config/tcr-sync/include.list}"
+EXCLUDE_FILE="${TCR_SYNC_EXCLUDE:-${HOME}/.config/tcr-sync/exclude.list}"
+STATE_DIR="${HOME}/.local/state/tcr-sync"
+LOG_FILE="${STATE_DIR}/sync.log"
+LOCK_DIR="${STATE_DIR}/lock"
+
+mkdir -p "$STATE_DIR"
+touch "$LOG_FILE"
+
+log() {
+  printf '%s %s\n' "$(date -Is)" "$*" | tee -a "$LOG_FILE"
+}
+
+cleanup() {
+  rmdir "$LOCK_DIR" 2>/dev/null || true
+}
+trap cleanup EXIT
+
+if ! mkdir "$LOCK_DIR" 2>/dev/null; then
+  log "Another sync process is running; this run exits. / 已有同步进程运行，本次退出。"
+  exit 0
+fi
+
+if [[ ! -f "$CONFIG_FILE" ]]; then
+  log "Missing configuration: $CONFIG_FILE / 缺少配置文件：$CONFIG_FILE"
+  exit 1
+fi
+
+# Load the locally generated configuration. / 加载本地生成的配置。
+# shellcheck disable=SC1090
+source "$CONFIG_FILE"
+
+: "${SOURCE_DIR:?SOURCE_DIR is not configured / SOURCE_DIR 未配置}"
+: "${MIRROR_DIR:?MIRROR_DIR is not configured / MIRROR_DIR 未配置}"
+: "${REPO_SSH_URL:?REPO_SSH_URL is not configured / REPO_SSH_URL 未配置}"
+: "${GIT_BRANCH:=main}"
+: "${MAX_FILE_MIB:=50}"
+: "${GIT_AUTHOR_NAME:=TCR Sync Bot}"
+: "${GIT_AUTHOR_EMAIL:=tcr-sync@localhost}"
+
+SOURCE_DIR="${SOURCE_DIR/#\~/$HOME}"
+MIRROR_DIR="${MIRROR_DIR/#\~/$HOME}"
+
+if [[ ! -d "$SOURCE_DIR" ]]; then
+  log "Source directory does not exist: $SOURCE_DIR / 源目录不存在：$SOURCE_DIR"
+  exit 1
+fi
+
+if [[ ! -d "$MIRROR_DIR/.git" ]]; then
+  log "Mirror repository is not initialized: $MIRROR_DIR / 镜像仓库未初始化：$MIRROR_DIR"
+  exit 1
+fi
+
+for command_name in git python3 rsync ssh find wc; do
+  if ! command -v "$command_name" >/dev/null 2>&1; then
+    log "Missing command: $command_name / 缺少命令：$command_name"
+    exit 1
+  fi
+done
+
+cd "$MIRROR_DIR"
+git remote set-url origin "$REPO_SSH_URL"
+git config user.name "$GIT_AUTHOR_NAME"
+git config user.email "$GIT_AUTHOR_EMAIL"
+
+log "Copying whitelisted content. / 开始复制白名单内容。"
+
+while IFS= read -r entry || [[ -n "$entry" ]]; do
+  entry="${entry#"${entry%%[![:space:]]*}"}"
+  entry="${entry%"${entry##*[![:space:]]}"}"
+  [[ -z "$entry" || "$entry" == \#* ]] && continue
+
+  # Reject absolute paths and directory traversal. / 拒绝绝对路径和目录穿越。
+  if [[ "$entry" == /* || "$entry" == *".."* ]]; then
+    log "Rejected unsafe whitelist entry: $entry / 拒绝不安全白名单条目：$entry"
+    continue
+  fi
+
+  source_path="${SOURCE_DIR}/${entry}"
+  target_path="${MIRROR_DIR}/${entry}"
+
+  if [[ ! -e "$source_path" ]]; then
+    log "Whitelist item not found; skipped: $entry / 白名单项目不存在，已跳过：$entry"
+    continue
+  fi
+
+  if [[ -d "$source_path" ]]; then
+    mkdir -p "$target_path"
+    rsync -a --delete --safe-links \
+      --exclude-from="$EXCLUDE_FILE" \
+      "$source_path/" "$target_path/"
+  elif [[ -f "$source_path" ]]; then
+    mkdir -p "$(dirname "$target_path")"
+    rsync -a --safe-links \
+      --exclude-from="$EXCLUDE_FILE" \
+      "$source_path" "$target_path"
+  fi
+done < "$INCLUDE_FILE"
+
+# Remove files over the safety limit before Git sees them. / 在 Git 处理前移除超过安全上限的文件。
+max_bytes=$((MAX_FILE_MIB * 1024 * 1024))
+oversize_report="${STATE_DIR}/oversize_skipped.txt"
+: > "$oversize_report"
+
+while IFS= read -r -d '' path; do
+  size=$(wc -c < "$path")
+  if (( size > max_bytes )); then
+    relative="${path#${MIRROR_DIR}/}"
+    printf '%s\t%s\n' "$size" "$relative" >> "$oversize_report"
+    rm -f -- "$path"
+    log "Removed file over ${MAX_FILE_MIB} MiB: $relative / 已移除超过 ${MAX_FILE_MIB} MiB 的文件：$relative"
+  fi
+done < <(find "$MIRROR_DIR" -path "$MIRROR_DIR/.git" -prune -o -type f -print0)
+
+python3 "${HOME}/.local/share/tcr-sync/build_manifest.py" \
+  "$MIRROR_DIR" "$MAX_FILE_MIB"
+
+git add -A
+
+if git diff --cached --quiet; then
+  log "No changes to commit. / 没有需要提交的变化。"
+  exit 0
+fi
+
+commit_message="auto-sync: $(date '+%Y-%m-%d %H:%M:%S %z')"
+git commit -m "$commit_message"
+
+export GIT_SSH_COMMAND="ssh -i ${HOME}/.ssh/id_ed25519_tcr_sync -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
+
+if git push origin "HEAD:${GIT_BRANCH}"; then
+  log "Synchronization completed: $commit_message / 同步完成：$commit_message"
+else
+  log "Push failed; the local commit is retained for retry. / 推送失败，本地提交已保留供下次重试。"
+  exit 1
+fi
