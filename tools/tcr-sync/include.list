@@ -1,0 +1,13 @@
+# Relative paths under the TCR project root. Directories end with /. / TCR 项目根目录下的相对路径，目录以 / 结尾。
+scripts/
+configs/
+reports/
+figures/
+results_summary/
+docs/
+README.md
+OWNER.txt
+PROGRESS_2026-06-15.md
+requirements.txt
+environment.yml
+pyproject.toml
