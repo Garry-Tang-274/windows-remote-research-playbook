@@ -1,0 +1,2 @@
+bash: prepare_key.sh, install.sh, tcr-sync passed bash -n
+python: build_manifest.py passed py_compile
