@@ -1,9 +1,9 @@
 # Windows 远程科研开发排障手册
 # Windows Remote Research Development Playbook
 
-这是一个面向使用 Windows 连接 Linux 科研服务器的学生与初学者的实用手册，覆盖 SSH、校园 VPN、编辑器远程连接、Python 环境和信息脱敏。
+这是一个面向使用 Windows 连接 Linux 科研服务器并维护公开技术仓库的学生与初学者的实用手册，覆盖 SSH、校园 VPN、编辑器远程连接、Python 环境、GitHub 仓库发布和信息脱敏。
 
-This is a practical playbook for students and beginners who use Windows to connect to Linux research servers, covering SSH, campus VPNs, remote editor connections, Python environments, and information redaction.
+This is a practical playbook for students and beginners who use Windows to connect to Linux research servers and maintain public technical repositories, covering SSH, campus VPNs, remote editor connections, Python environments, GitHub repository publishing, and information redaction.
 
 手册强调先建立可重复的诊断顺序，再更改配置；每一步都说明目的、命令、预期结果和失败后的下一步。
 
@@ -12,24 +12,28 @@ The playbook emphasizes establishing a repeatable diagnostic order before changi
 ## 使用边界
 ## Scope and Boundaries
 
-本文档不提供绕过学校安全策略、管理员限制或访问控制的方法。所有操作都应在你有权使用的账号、网络和服务器上进行。
+本文档不提供绕过学校安全策略、管理员限制、仓库保护规则或访问控制的方法。所有操作都应在你有权使用的账号、网络、服务器和 GitHub 仓库上进行。
 
-These documents do not provide methods to bypass school security policies, administrator restrictions, or access controls. All operations should be performed only on accounts, networks, and servers you are authorized to use.
+These documents do not provide methods to bypass school security policies, administrator restrictions, repository protection rules, or access controls. All operations should be performed only on accounts, networks, servers, and GitHub repositories you are authorized to use.
 
-在公开 Issue 或截图前，必须隐藏服务器地址、用户名、邮箱、目录、令牌、Cookie、VPN 域名和研究数据文件名。
+在公开 Issue、日志或截图前，必须隐藏服务器地址、用户名、邮箱、目录、令牌、Cookie、VPN 域名、研究数据文件名和私有仓库信息。
 
-Before posting an issue or screenshot publicly, redact server addresses, usernames, email addresses, directories, tokens, cookies, VPN domains, and research-data filenames.
+Before posting an issue, log, or screenshot publicly, redact server addresses, usernames, email addresses, directories, tokens, cookies, VPN domains, research-data filenames, and private-repository information.
 
 ## 推荐排障顺序
 ## Recommended Troubleshooting Order
 
-第一步确认本机网络和目标端口是否可达；第二步在 PowerShell 中直接运行 SSH；第三步才检查 VS Code、Zed 或其他编辑器；最后处理 Python 环境和项目依赖。
+远程服务器问题应先确认本机网络和目标端口是否可达；第二步在 PowerShell 中直接运行 SSH；第三步才检查 VS Code、Zed 或其他编辑器；最后处理 Python 环境和项目依赖。
 
-First confirm local network and target-port reachability; second run SSH directly in PowerShell; third inspect VS Code, Zed, or another editor; finally address Python environments and project dependencies.
+For remote-server problems, first confirm local network and target-port reachability; second run SSH directly in PowerShell; third inspect VS Code, Zed, or another editor; finally address Python environments and project dependencies.
 
-不要同时更换 VPN、SSH 配置、编辑器扩展和 Python 环境，否则即使问题消失也无法判断根因。
+GitHub 发布问题应先确认当前操作环境与权限，再区分少量文件写入、Git Tree 批量提交和本机 Git 推送；最后必须重新读取关键文件并检查临时恢复内容是否已经清理。
 
-Do not change the VPN, SSH configuration, editor extension, and Python environment simultaneously, because even if the problem disappears, the root cause will remain unknown.
+For GitHub publishing problems, first confirm the operating environment and permission scope, then distinguish small-file writes, Git Tree batch commits, and local Git pushes; finally reread key files and verify that temporary restoration content has been removed.
+
+不要同时更换 VPN、SSH 配置、编辑器扩展、Python 环境和 GitHub 认证方式，否则即使问题消失也无法判断根因。
+
+Do not change the VPN, SSH configuration, editor extension, Python environment, and GitHub authentication method simultaneously, because even if the problem disappears, the root cause will remain unknown.
 
 ## 快速诊断
 ## Quick Diagnosis
@@ -58,6 +62,15 @@ Run the following command to inspect Python interpreters, virtual environments, 
 .\scripts\check_python_environment.ps1
 ```
 
+检查本机 GitHub CLI 是否已经登录，以及当前账号能否访问目标仓库时运行以下命令。
+
+Run the following commands to check whether GitHub CLI is authenticated and whether the current account can access the target repository.
+
+```powershell
+gh auth status
+gh repo view OWNER/REPOSITORY
+```
+
 ## 文档导航
 ## Documentation Map
 
@@ -71,6 +84,8 @@ Run the following command to inspect Python interpreters, virtual environments, 
 - `docs/vscode-remote.md`: Layered troubleshooting for VS Code Remote SSH.
 - `docs/zed-remote.md`：Zed 远程连接与终端差异。
 - `docs/zed-remote.md`: Zed remote connections and terminal differences.
+- `docs/github-repository-publishing.md`：仓库创建权限、批量提交、Actions 未触发、完整性验证和临时文件清理。
+- `docs/github-repository-publishing.md`: Repository-creation permissions, batch commits, Actions not triggering, integrity verification, and temporary-file cleanup.
 - `docs/security-redaction.md`：日志与截图脱敏清单。
 - `docs/security-redaction.md`: Redaction checklist for logs and screenshots.
 
@@ -85,9 +100,13 @@ Every new command must state the applicable system, whether it modifies state, w
 
 All documents must maintain strictly paragraph-corresponding Chinese and English; commands appear only once, but their purpose and results must be explained bilingually.
 
+真实排障经验可以写入手册，但必须区分已经确认的根因、合理推测和仍未确定的现象。
+
+Real troubleshooting experience may be added to the playbook, but confirmed root causes, reasonable hypotheses, and unresolved observations must be clearly distinguished.
+
 ## 许可
 ## License
 
-本手册与脚本采用 MIT 许可证。执行命令前应理解其作用，并对自己的系统和数据负责。
+本手册与脚本采用 MIT 许可证。执行命令前应理解其作用，并对自己的系统、仓库和数据负责。
 
-This playbook and its scripts are licensed under the MIT License. Understand each command before running it and remain responsible for your own system and data.
+This playbook and its scripts are licensed under the MIT License. Understand each command before running it and remain responsible for your own system, repositories, and data.
