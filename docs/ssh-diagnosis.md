@@ -20,6 +20,21 @@ Test-NetConnection example.edu -Port 22
 
 If `TcpTestSucceeded` is `False`, inspect VPN, routing, firewalls, server maintenance, and the port before changing passwords or keys.
 
+## 不要用浏览器结果代替 SSH 测试
+## Do Not Substitute Browser Results for SSH Tests
+
+Windows 系统代理主要影响支持该代理设置的 HTTP/HTTPS 程序。浏览器能访问 GitHub、ChatGPT 或学校网页，并不代表 SSH 的 TCP 连接也经过同一条路径。
+
+The Windows system proxy mainly affects HTTP/HTTPS programs that honor the proxy setting. A browser being able to reach GitHub, ChatGPT, or a school webpage does not mean the SSH TCP connection uses the same path.
+
+如果“网页正常但 SSH 不通”，先单独测试目标 SSH 端口，并确认科研服务器是否要求校园 VPN。不要因为浏览器已经恢复就跳过网络层诊断。
+
+If “the web works but SSH does not,” test the target SSH port separately and confirm whether the research server requires a campus VPN. Do not skip network-layer diagnosis merely because browser access has recovered.
+
+如果正在使用 FlClash、系统代理或 TUN，同时阅读 [`windows-flclash-routing.md`](windows-flclash-routing.md)。TUN 可能改变 SSH 的底层路由，而单纯开启系统代理通常不能说明 SSH 已经被代理。
+
+If FlClash, the system proxy, or TUN is active, also read [`windows-flclash-routing.md`](windows-flclash-routing.md). TUN may change SSH routing at a lower layer, while merely enabling the system proxy usually does not show that SSH traffic is proxied.
+
 ## 第 2 层：直接运行 SSH
 ## Layer 2: Run SSH Directly
 
@@ -38,6 +53,10 @@ ssh -vvv username@example.edu
 若停在连接阶段，问题通常位于网络；若出现 `Permission denied`，问题通常位于账号、密码、密钥或服务器认证策略。
 
 If the command stalls during connection, the problem is usually network-related; if it shows `Permission denied`, the problem is usually the account, password, key, or server authentication policy.
+
+若连接阶段超时，而浏览器 HTTPS 同时正常，不要因此开始修改 Python、GitHub CLI 或编辑器扩展。应继续检查目标端口、校园 VPN、路由和服务器状态。
+
+If the connection stage times out while browser HTTPS works normally, do not start changing Python, GitHub CLI, or editor extensions. Continue checking the target port, campus VPN, routing, and server status.
 
 ## 第 3 层：检查 SSH 配置
 ## Layer 3: Inspect SSH Configuration
