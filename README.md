@@ -103,6 +103,13 @@ gh repo view OWNER/REPOSITORY
 
 [`docs/android-clash-split-tunneling.md`](docs/android-clash-split-tunneling.md) separates per-app routing from rule mode and explains allowlists, denylists, system components, VPN-session restarts, and background restrictions.
 
+### 避免不完整提交与重复失败提醒
+### Avoid Incomplete Commits and Repeated Failure Notifications
+
+[完整发布检查](docs/complete-github-publications.md)补充了本地预检、并发更新、钩子的实际作用范围和公开源码包取舍，不依赖关闭故障检查。
+
+The [complete-publication guide](docs/complete-github-publications.md) covers local preflight, concurrent updates, hook coverage and public-package selection without disabling failure checks.
+
 ## 文档导航
 ## Documentation Map
 
